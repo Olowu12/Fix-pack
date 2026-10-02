@@ -1,63 +1,23 @@
 name: Build NeoQN Fix Pack
-
-on:
-  push:
-  workflow_dispatch:
-
+on: [push, workflow_dispatch]
 permissions:
   contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Get the code
-        uses: actions/checkout@v4
-
-      # Lets you upload the whole project as one project.zip from your phone.
-      - name: Unpack project.zip (if you uploaded one)
-        run: |
-          if [ -f project.zip ]; then
-            unzip -o -q project.zip -d .
-            echo "Unpacked project.zip"
-          fi
-          test -f settings.gradle.kts || { echo "::error::settings.gradle.kts not found. Upload project.zip to the top of the repo."; exit 1; }
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Set up Gradle 8.11.1
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.11.1"
-
-      - name: Build the provider APK
-        run: gradle :fixpack:assembleRelease --stacktrace --no-daemon
-
+      - uses: actions/checkout@v4
+      - name: Unpack project.zip
+        run: "if [ -f project.zip ]; then unzip -o -q project.zip -d .; fi; test -f settings.gradle.kts"
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: "17"}
+      - uses: gradle/actions/setup-gradle@v4
+        with: {gradle-version: "8.11.1"}
+      - name: Build
+        run: "gradle :fixpack:assembleRelease --stacktrace --no-daemon"
       - name: Collect files
-        run: |
-          mkdir -p out
-          cp fixpack/build/outputs/apk/release/*.apk out/NeoQN_FixPack.apk
-          cp fixpack/src/main/assets/plugin.json out/NeoQN_FixPack.json
-          ls -la out
-
-      - name: Upload as build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: NeoQN_FixPack
-          path: out/
-
-      # A release gives a direct .apk download link that works from a phone browser.
-      - name: Publish release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: build-${{ github.run_number }}
-          name: NeoQN Fix Pack (build ${{ github.run_number }})
-          body: |
-            Download NeoQN_FixPack.apk, then in NeoQN: Settings → Advanced → Import Provider APK.
-          files: |
-            out/NeoQN_FixPack.apk
-            out/NeoQN_FixPack.json
+        run: "mkdir -p out && cp fixpack/build/outputs/apk/release/*.apk out/NeoQN_FixPack.apk && cp fixpack/src/main/assets/plugin.json out/NeoQN_FixPack.json"
+      - uses: actions/upload-artifact@v4
+        with: {name: NeoQN_FixPack, path: out/}
+      - uses: softprops/action-gh-release@v2
+        with: {tag_name: "build-${{ github.run_number }}", files: "out/NeoQN_FixPack.apk\nout/NeoQN_FixPack.json"}
